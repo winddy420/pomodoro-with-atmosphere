@@ -105,6 +105,7 @@ const App = () => {
   const [bgSwitchKey, setBgSwitchKey] = useState(0);
   const [apiKey, setApiKey] = useState('');
   const [hasHydrated, setHasHydrated] = useState(false);
+  const [now, setNow] = useState(new Date());
 
   // State สำหรับ Gemini API feature
   const [quote, setQuote] = useState(null);
@@ -303,6 +304,19 @@ const App = () => {
       [category]: bg.id,
     }));
   };
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const formatClock = () =>
+    now.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
 
   // Utility function for exponential backoff (required for robustness)
   const exponentialBackoffFetch = async (url, options, maxRetries = 3) => {
@@ -731,8 +745,8 @@ const App = () => {
       </div>
 
       {/* --- Header --- */}
-      <div className="absolute top-6 left-0 right-0 flex justify-center z-20">
-        <div className="text-white/80 text-xs tracking-[0.4em] uppercase font-light drop-shadow-lg border-b border-white/20 pb-2 px-8">
+      <div className="absolute top-6 left-0 right-0 flex flex-col items-center z-20 gap-2">
+        <div className="text-white/80 text-xs tracking-[0.4em] uppercase font-light drop-shadow-lg border-b border-white/20 pb-2 px-8 text-center">
           Minimal Focus
         </div>
       </div>
@@ -740,7 +754,7 @@ const App = () => {
       {/* --- Main Content --- */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-md px-4">
         {/* Timer Display */}
-        <div className="relative flex items-center justify-center mb-8 mt-4 group">
+        <div className="relative flex items-center justify-center mb-8 mt-12 md:mt-14 group">
           {/* Breathing Circle Effect (Only active when timer is running) */}
           <div
             className={`absolute w-80 h-80 rounded-full border border-white/30 opacity-20 transform transition-all duration-[4000ms] ease-in-out ${isActive ? 'scale-110 opacity-30' : 'scale-100 opacity-5'}`}
@@ -769,7 +783,7 @@ const App = () => {
           </svg>
 
           {/* Time Text */}
-          <div className="absolute text-center flex flex-col items-center text-white">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white gap-2">
             <span
               className={`text-7xl font-light tracking-tighter tabular-nums drop-shadow-2xl transition-colors duration-500 ${isActive ? 'text-white' : 'text-white/90'}`}
             >
@@ -777,6 +791,9 @@ const App = () => {
             </span>
             <span className={`text-sm mt-3 tracking-[0.2em] uppercase font-medium transition-colors duration-300 ${MODES[mode].color}`}>
               {isActive ? 'Flowing' : MODES[mode].label}
+            </span>
+            <span className="text-sm text-white/90 bg-black/70 border border-white/10 px-3 py-1 rounded-full backdrop-blur">
+              {formatClock()}
             </span>
           </div>
         </div>
