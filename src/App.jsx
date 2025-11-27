@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Brain, Armchair, Loader2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Armchair, Loader2, Eye, EyeOff } from 'lucide-react';
 
 // --- Configuration ---
 const MODES = {
@@ -106,6 +106,7 @@ const App = () => {
   const [apiKey, setApiKey] = useState('');
   const [hasHydrated, setHasHydrated] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [showAtmosphereUI, setShowAtmosphereUI] = useState(true);
 
   // State สำหรับ Gemini API feature
   const [quote, setQuote] = useState(null);
@@ -745,11 +746,21 @@ const App = () => {
       </div>
 
       {/* --- Header --- */}
-      <div className="absolute top-6 left-0 right-0 flex flex-col items-center z-20 gap-2">
+      <div className="absolute top-6 left-0 right-0 flex flex-col items-center z-20 gap-2 px-4">
         <div className="text-white/80 text-xs tracking-[0.4em] uppercase font-light drop-shadow-lg border-b border-white/20 pb-2 px-8 text-center">
           Minimal Focus
         </div>
       </div>
+      {!showAtmosphereUI && (
+        <button
+          type="button"
+          onClick={() => setShowAtmosphereUI(true)}
+          className="fixed top-6 right-4 z-30 text-white/80 bg-black/60 border border-white/15 p-2 rounded-full backdrop-blur hover:bg-black/70 transition-colors"
+          aria-label="Show Atmosphere/Settings"
+        >
+          <Eye size={16} />
+        </button>
+      )}
 
       {/* --- Main Content --- */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-md px-4">
@@ -798,442 +809,455 @@ const App = () => {
           </div>
         </div>
 
-        {/* --- Background Selector (Improved Visibility) --- */}
-        <div className="w-full mb-8">
-          <div className="flex justify-center gap-2 mb-2">
-            <span className="text-[10px] text-white/40 uppercase tracking-wider">Select Atmosphere</span>
-          </div>
-          <div className="flex justify-center gap-3 overflow-x-auto py-2 px-4 no-scrollbar">
-            {backgrounds[MODES[mode].bgCategory].map((bg) => (
-              <button
-                key={bg.id}
-                onClick={() => setBgForCategory(bg)}
-                className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${currentBgData.id === bg.id ? 'scale-105 opacity-100' : 'opacity-50 hover:opacity-80'}`}
-              >
-                <div
-                  className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-colors ${
-                    currentBgData.id === bg.id ? `border-${MODES[mode].color.split('-')[1]}-400` : 'border-transparent'
-                  }`}
+        {showAtmosphereUI && (
+          <>
+            {/* --- Background Selector (Improved Visibility) --- */}
+            <div className="w-full mb-8">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <span className="text-[10px] text-white/40 uppercase tracking-wider">Select Atmosphere</span>
+                <button
+                  type="button"
+                  onClick={() => setShowAtmosphereUI((v) => !v)}
+                  className="text-white/70 hover:text-white p-1 rounded-full bg-black/40 border border-white/10 backdrop-blur transition-colors"
+                  aria-label={showAtmosphereUI ? 'Hide Atmosphere/Settings' : 'Show Atmosphere/Settings'}
                 >
-                  {bg.type === 'youtube' ? (
-                    (() => {
-                      const thumb = getYoutubeThumbnail(bg);
-                      return thumb ? (
-                        <img src={thumb} alt={bg.name} className="w-full h-full object-cover" />
+                  {showAtmosphereUI ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              <div className="flex justify-center gap-3 overflow-x-auto py-2 px-4 no-scrollbar">
+                {backgrounds[MODES[mode].bgCategory].map((bg) => (
+                  <button
+                    key={bg.id}
+                    onClick={() => setBgForCategory(bg)}
+                    className={`group relative flex flex-col items-center gap-2 transition-all duration-300 ${currentBgData.id === bg.id ? 'scale-105 opacity-100' : 'opacity-50 hover:opacity-80'}`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-xl overflow-hidden border-2 transition-colors ${
+                        currentBgData.id === bg.id ? `border-${MODES[mode].color.split('-')[1]}-400` : 'border-transparent'
+                      }`}
+                    >
+                      {bg.type === 'youtube' ? (
+                        (() => {
+                          const thumb = getYoutubeThumbnail(bg);
+                          return thumb ? (
+                            <img src={thumb} alt={bg.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full bg-red-600/70 text-white text-[10px] font-semibold flex items-center justify-center">
+                              YT
+                            </div>
+                          );
+                        })()
                       ) : (
-                        <div className="w-full h-full bg-red-600/70 text-white text-[10px] font-semibold flex items-center justify-center">
-                          YT
+                        <img src={bg.url} alt={bg.name} className="w-full h-full object-cover" />
+                      )}
+                    </div>
+                    <span className="text-[10px] text-white font-medium whitespace-nowrap">{bg.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* --- Atmosphere Manager --- */}
+            <div className="w-full mb-8 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-white/50 uppercase tracking-[0.25em]">Settings & Manage Atmosphere</span>
+                  {formMessage && <span className="text-[11px] text-emerald-200 mt-1">{formMessage}</span>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsManagerOpen((v) => !v)}
+                  className="text-white/80 hover:text-white text-xs px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition-colors"
+                >
+                  {isManagerOpen ? 'Collapse' : 'Expand'}
+                </button>
+              </div>
+
+              <div
+                className={`space-y-4 transition-[max-height,opacity] duration-500 ease-in-out ${
+                  isManagerOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+                } overflow-hidden`}
+                aria-hidden={!isManagerOpen}
+              >
+                {/* Durations */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
+                  <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">ตั้งค่าเวลา (นาที)</div>
+                  <form
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const sanitized = {
+                        focus: clampMinutes(durationDraft.focus),
+                        shortBreak: clampMinutes(durationDraft.shortBreak),
+                        longBreak: clampMinutes(durationDraft.longBreak),
+                      };
+                      setDurationDraft(sanitized);
+                      setCustomTimes(sanitized);
+                      setIsActive(false);
+                      setTimeLeft(getModeSeconds(mode));
+                      setFormMessage('อัปเดตเวลาเรียบร้อย');
+                    }}
+                  >
+                    {[
+                      { key: 'focus', label: 'Focus' },
+                      { key: 'shortBreak', label: 'Short Break' },
+                      { key: 'longBreak', label: 'Long Break' },
+                    ].map((item) => (
+                      <div key={item.key} className="flex flex-col gap-1">
+                        <label className="text-[11px] text-white/60">{item.label}</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="180"
+                          value={durationDraft[item.key]}
+                          onChange={(e) =>
+                            setDurationDraft((prev) => ({
+                              ...prev,
+                              [item.key]: e.target.value,
+                            }))
+                          }
+                          className="w-full bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                        />
+                      </div>
+                    ))}
+                    <div className="sm:col-span-3 flex justify-end">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-lg border border-white/15 transition-colors"
+                      >
+                        บันทึกเวลา
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Add new */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                  <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">เพิ่ม Atmosphere ใหม่</div>
+                  <form onSubmit={handleAddAtmosphere} className="space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <select
+                        value={newAtmosphere.category}
+                        onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, category: e.target.value }))}
+                        className="bg-black/30 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                      >
+                        <option value="focus">Focus</option>
+                        <option value="break">Break</option>
+                      </select>
+                      <select
+                        value={newAtmosphere.type}
+                        onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, type: e.target.value }))}
+                        className="bg-black/30 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                      >
+                        <option value="image">Upload</option>
+                        <option value="youtube">YouTube</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={newAtmosphere.name}
+                        onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, name: e.target.value }))}
+                        placeholder="ชื่อ Atmosphere ใหม่"
+                        className="col-span-3 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                      />
+                    </div>
+                    {newAtmosphere.type === 'youtube' ? (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="url"
+                          value={newAtmosphere.youtubeLink}
+                          onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, youtubeLink: e.target.value }))}
+                          placeholder="ลิงก์ YouTube (video / playlist / live)"
+                          className="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                        />
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                        >
+                          เพิ่ม Atmosphere
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row items-center gap-2">
+                        <input
+                          type="file"
+                          accept="image/gif,image/apng,image/webp,image/jpeg,image/png"
+                          onChange={handleNewFileChange}
+                          className="text-[11px] text-white/70"
+                        />
+                        <button
+                          type="submit"
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                        >
+                          เพิ่ม Atmosphere
+                        </button>
+                      </div>
+                    )}
+                  </form>
+                </div>
+
+                {/* Edit current */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                  <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">
+                    แก้ไข Atmosphere ปัจจุบัน ({MODES[mode].label})
+                  </div>
+                  <form onSubmit={handleUpdateCurrent} className="space-y-2">
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="col-span-2 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                        placeholder="ชื่อ Atmosphere"
+                      />
+                      <select
+                        value={editType}
+                        onChange={(e) => setEditType(e.target.value)}
+                        className="bg-black/30 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                      >
+                        <option value="image">Upload</option>
+                        <option value="youtube">YouTube</option>
+                      </select>
+                    </div>
+                    {editType === 'youtube' ? (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="url"
+                          value={editYoutubeLink}
+                          onChange={(e) => setEditYoutubeLink(e.target.value)}
+                          placeholder="ลิงก์ YouTube (video / playlist / live)"
+                          className="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleDeleteCurrent}
+                            className="px-3 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            ลบ
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            บันทึก
+                          </button>
                         </div>
-                      );
-                    })()
-                  ) : (
-                    <img src={bg.url} alt={bg.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="file"
+                          accept="image/gif,image/apng,image/webp,image/jpeg,image/png"
+                          onChange={handleEditFileChange}
+                          className="text-[11px] text-white/70"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleDeleteCurrent}
+                            className="px-3 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            ลบ
+                          </button>
+                          <button
+                            type="submit"
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
+                          >
+                            บันทึก
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </form>
+
+                  {currentBgData.type === 'youtube' && (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] text-white/60">
+                        <span>เสียงวิดีโอพื้นหลัง</span>
+                        <span>{bgVolume}%</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !isYoutubeMuted;
+                            setIsYoutubeMuted(next);
+                            if (bgPlayerRef.current) {
+                              if (next) bgPlayerRef.current.mute();
+                              else {
+                                if (bgVolume === 0) {
+                                  setBgVolume(30);
+                                  bgPlayerRef.current.setVolume(30);
+                                }
+                                bgPlayerRef.current.unMute();
+                              }
+                            }
+                          }}
+                          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/15 backdrop-blur transition-colors"
+                        >
+                          {isYoutubeMuted ? '🔇 เปิดเสียงวีดีโอ' : '🔊 ปิดเสียงวีดีโอ'}
+                        </button>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={bgVolume}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setBgVolume(val);
+                            if (bgPlayerRef.current) {
+                              bgPlayerRef.current.setVolume(val);
+                              if (val === 0) {
+                                setIsYoutubeMuted(true);
+                                bgPlayerRef.current.mute();
+                              } else if (isYoutubeMuted) {
+                                setIsYoutubeMuted(false);
+                                bgPlayerRef.current.unMute();
+                              }
+                            }
+                          }}
+                          className="flex-1 accent-white/80"
+                        />
+                      </div>
+                    </div>
                   )}
                 </div>
-                <span className="text-[10px] text-white font-medium whitespace-nowrap">{bg.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* --- Atmosphere Manager --- */}
-        <div className="w-full mb-8 bg-white/5 border border-white/10 rounded-2xl p-4 backdrop-blur space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-[10px] text-white/50 uppercase tracking-[0.25em]">Settings & Manage Atmosphere</span>
-              {formMessage && <span className="text-[11px] text-emerald-200 mt-1">{formMessage}</span>}
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsManagerOpen((v) => !v)}
-              className="text-white/80 hover:text-white text-xs px-3 py-1 rounded-lg bg-white/10 hover:bg-white/15 transition-colors"
-            >
-              {isManagerOpen ? 'Collapse' : 'Expand'}
-            </button>
-          </div>
-
-          <div
-          className={`space-y-4 transition-[max-height,opacity] duration-500 ease-in-out ${
-            isManagerOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-          } overflow-hidden`}
-          aria-hidden={!isManagerOpen}
-        >
-            {/* Durations */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-3">
-              <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">ตั้งค่าเวลา (นาที)</div>
-              <form
-                className="grid grid-cols-1 sm:grid-cols-3 gap-3"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  const sanitized = {
-                    focus: clampMinutes(durationDraft.focus),
-                    shortBreak: clampMinutes(durationDraft.shortBreak),
-                    longBreak: clampMinutes(durationDraft.longBreak),
-                  };
-                  setDurationDraft(sanitized);
-                  setCustomTimes(sanitized);
-                  setIsActive(false);
-                  setTimeLeft(getModeSeconds(mode));
-                  setFormMessage('อัปเดตเวลาเรียบร้อย');
-                }}
-              >
-                {[
-                  { key: 'focus', label: 'Focus' },
-                  { key: 'shortBreak', label: 'Short Break' },
-                  { key: 'longBreak', label: 'Long Break' },
-                ].map((item) => (
-                  <div key={item.key} className="flex flex-col gap-1">
-                    <label className="text-[11px] text-white/60">{item.label}</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="180"
-                      value={durationDraft[item.key]}
-                      onChange={(e) =>
-                        setDurationDraft((prev) => ({
-                          ...prev,
-                          [item.key]: e.target.value,
-                        }))
-                      }
-                      className="w-full bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                    />
-                  </div>
-                ))}
-                <div className="sm:col-span-3 flex justify-end">
-                  <button
-                    type="submit"
-                    className="px-4 py-2 bg-white/15 hover:bg-white/25 text-white text-xs font-semibold rounded-lg border border-white/15 transition-colors"
-                  >
-                    บันทึกเวลา
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            {/* Add new */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
-              <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">เพิ่ม Atmosphere ใหม่</div>
-              <form onSubmit={handleAddAtmosphere} className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <select
-                    value={newAtmosphere.category}
-                    onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, category: e.target.value }))}
-                    className="bg-black/30 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                  >
-                    <option value="focus">Focus</option>
-                    <option value="break">Break</option>
-                  </select>
-                  <select
-                    value={newAtmosphere.type}
-                    onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, type: e.target.value }))}
-                    className="bg-black/30 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                  >
-                    <option value="image">Upload</option>
-                    <option value="youtube">YouTube</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={newAtmosphere.name}
-                    onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="ชื่อ Atmosphere ใหม่"
-                    className="col-span-3 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                  />
-                </div>
-                {newAtmosphere.type === 'youtube' ? (
+                {/* Background music */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                  <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">Background Music (YouTube)</div>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="url"
-                      value={newAtmosphere.youtubeLink}
-                      onChange={(e) => setNewAtmosphere((prev) => ({ ...prev, youtubeLink: e.target.value }))}
-                      placeholder="ลิงก์ YouTube (video / playlist / live)"
+                      value={audioInput}
+                      onChange={(e) => setAudioInput(e.target.value)}
+                      placeholder="ลิงก์ YouTube (video/playlist/live) สำหรับเสียง"
                       className="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
                     />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                    >
-                      เพิ่ม Atmosphere
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row items-center gap-2">
-                    <input
-                      type="file"
-                      accept="image/gif,image/apng,image/webp,image/jpeg,image/png"
-                      onChange={handleNewFileChange}
-                      className="text-[11px] text-white/70"
-                    />
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                    >
-                      เพิ่ม Atmosphere
-                    </button>
-                  </div>
-                )}
-              </form>
-            </div>
-
-            {/* Edit current */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
-              <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">
-                แก้ไข Atmosphere ปัจจุบัน ({MODES[mode].label})
-              </div>
-              <form onSubmit={handleUpdateCurrent} className="space-y-2">
-                <div className="grid grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="col-span-2 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                    placeholder="ชื่อ Atmosphere"
-                  />
-                  <select
-                    value={editType}
-                    onChange={(e) => setEditType(e.target.value)}
-                    className="bg-black/30 border border-white/10 text-white text-xs rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                  >
-                    <option value="image">Upload</option>
-                    <option value="youtube">YouTube</option>
-                  </select>
-                </div>
-                {editType === 'youtube' ? (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="url"
-                      value={editYoutubeLink}
-                      onChange={(e) => setEditYoutubeLink(e.target.value)}
-                      placeholder="ลิงก์ YouTube (video / playlist / live)"
-                      className="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleDeleteCurrent}
-                        className="px-3 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
-                      >
-                        ลบ
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                      >
-                        บันทึก
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input
-                      type="file"
-                      accept="image/gif,image/apng,image/webp,image/jpeg,image/png"
-                      onChange={handleEditFileChange}
-                      className="text-[11px] text-white/70"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleDeleteCurrent}
-                        className="px-3 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
-                      >
-                        ลบ
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                      >
-                        บันทึก
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </form>
-
-              {currentBgData.type === 'youtube' && (
-                <div className="mt-2 space-y-2">
-                  <div className="flex items-center justify-between text-[11px] text-white/60">
-                    <span>เสียงวิดีโอพื้นหลัง</span>
-                    <span>{bgVolume}%</span>
-                  </div>
-                  <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => {
-                        const next = !isYoutubeMuted;
-                        setIsYoutubeMuted(next);
-                        if (bgPlayerRef.current) {
-                          if (next) bgPlayerRef.current.mute();
-                          else {
-                            if (bgVolume === 0) {
-                              setBgVolume(30);
-                              bgPlayerRef.current.setVolume(30);
-                            }
-                            bgPlayerRef.current.unMute();
-                          }
+                        setFormMessage(null);
+                        if (!audioInput.trim()) {
+                          setFormMessage('กรุณาใส่ลิงก์เสียง YouTube');
+                          return;
                         }
+                        const embed = buildYouTubeEmbed(audioInput);
+                        if (!embed) {
+                          setFormMessage('ลิงก์ YouTube ไม่ถูกต้อง');
+                          return;
+                        }
+                        setAudioUrl(embed);
+                        setAudioSource(audioInput.trim());
+                        setAudioMuted(true);
+                        setFormMessage('ตั้งค่าเสียงพื้นหลังแล้ว (เริ่มแบบปิดเสียง)');
                       }}
-                      className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/15 backdrop-blur transition-colors"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
                     >
-                      {isYoutubeMuted ? '🔇 เปิดเสียงวีดีโอ' : '🔊 ปิดเสียงวีดีโอ'}
+                      ตั้งค่า
                     </button>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={bgVolume}
-                      onChange={(e) => {
-                        const val = Number(e.target.value);
-                        setBgVolume(val);
-                        if (bgPlayerRef.current) {
-                          bgPlayerRef.current.setVolume(val);
-                          if (val === 0) {
-                            setIsYoutubeMuted(true);
-                            bgPlayerRef.current.mute();
-                          } else if (isYoutubeMuted) {
-                            setIsYoutubeMuted(false);
-                            bgPlayerRef.current.unMute();
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!audioUrl) return;
+                          const next = !audioMuted;
+                          setAudioMuted(next);
+                          if (musicPlayerRef.current) {
+                            if (next) musicPlayerRef.current.mute();
+                            else {
+                              if (audioVolume === 0) {
+                                setAudioVolume(40);
+                                musicPlayerRef.current.setVolume(40);
+                              }
+                              musicPlayerRef.current.unMute();
+                            }
                           }
-                        }
-                      }}
-                      className="flex-1 accent-white/80"
-                    />
+                        }}
+                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/15 backdrop-blur transition-colors disabled:opacity-40"
+                        disabled={!audioUrl}
+                      >
+                        {audioMuted ? '🔇 เปิดเสียงเพลง' : '🔊 ปิดเสียงเพลง'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAudioUrl('');
+                          setAudioSource('');
+                          setAudioInput('');
+                          setFormMessage('ลบเสียงพื้นหลังแล้ว');
+                        }}
+                        className="px-3 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
+                        disabled={!audioUrl}
+                      >
+                        ลบเสียง
+                      </button>
+                      {audioSource && <span className="text-[11px] text-white/60 truncate">Source: {audioSource}</span>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-white/60">ระดับเสียง</span>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={audioVolume}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setAudioVolume(val);
+                          if (musicPlayerRef.current) {
+                            musicPlayerRef.current.setVolume(val);
+                            if (val === 0) {
+                              setAudioMuted(true);
+                              musicPlayerRef.current.mute();
+                            } else if (audioMuted) {
+                              setAudioMuted(false);
+                              musicPlayerRef.current.unMute();
+                            }
+                          }
+                        }}
+                        className="flex-1 accent-white/80"
+                        disabled={!audioUrl}
+                      />
+                      <span className="text-[11px] text-white/70 w-10 text-right">{audioVolume}%</span>
+                    </div>
                   </div>
                 </div>
-              )}
-              </div>
 
-              {/* Background music */}
-              <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
-                <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">Background Music (YouTube)</div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="url"
-                  value={audioInput}
-                  onChange={(e) => setAudioInput(e.target.value)}
-                  placeholder="ลิงก์ YouTube (video/playlist/live) สำหรับเสียง"
-                  className="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFormMessage(null);
-                    if (!audioInput.trim()) {
-                      setFormMessage('กรุณาใส่ลิงก์เสียง YouTube');
-                      return;
-                    }
-                    const embed = buildYouTubeEmbed(audioInput);
-                    if (!embed) {
-                      setFormMessage('ลิงก์ YouTube ไม่ถูกต้อง');
-                      return;
-                    }
-                    setAudioUrl(embed);
-                    setAudioSource(audioInput.trim());
-                    setAudioMuted(true);
-                    setFormMessage('ตั้งค่าเสียงพื้นหลังแล้ว (เริ่มแบบปิดเสียง)');
-                  }}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
-                >
-                  ตั้งค่า
-                </button>
-              </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!audioUrl) return;
-                      const next = !audioMuted;
-                      setAudioMuted(next);
-                      if (musicPlayerRef.current) {
-                        if (next) musicPlayerRef.current.mute();
-                        else {
-                          if (audioVolume === 0) {
-                            setAudioVolume(40);
-                            musicPlayerRef.current.setVolume(40);
-                          }
-                          musicPlayerRef.current.unMute();
-                        }
-                      }
-                    }}
-                    className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/15 backdrop-blur transition-colors disabled:opacity-40"
-                    disabled={!audioUrl}
-                  >
-                    {audioMuted ? '🔇 เปิดเสียงเพลง' : '🔊 ปิดเสียงเพลง'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAudioUrl('');
-                      setAudioSource('');
-                      setAudioInput('');
-                      setFormMessage('ลบเสียงพื้นหลังแล้ว');
-                    }}
-                    className="px-3 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors disabled:opacity-40"
-                    disabled={!audioUrl}
-                  >
-                    ลบเสียง
-                  </button>
-                  {audioSource && <span className="text-[11px] text-white/60 truncate">Source: {audioSource}</span>}
+                {/* Gemini API Key */}
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                  <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">Gemini API Key</div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="password"
+                      value={apiKey}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setApiKey(val);
+                        localStorage.setItem('geminiApiKey', val);
+                      }}
+                      placeholder="ใส่ API Key เพื่อใช้ Break Inspiration"
+                      className="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setApiKey('');
+                        localStorage.removeItem('geminiApiKey');
+                        setFormMessage('ลบ API Key แล้ว');
+                      }}
+                      className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
+                    >
+                      ลบ
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-white/50">Key ถูกเก็บใน localStorage บนเบราว์เซอร์คุณ</div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-white/60">ระดับเสียง</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={audioVolume}
-                    onChange={(e) => {
-                      const val = Number(e.target.value);
-                      setAudioVolume(val);
-                      if (musicPlayerRef.current) {
-                        musicPlayerRef.current.setVolume(val);
-                        if (val === 0) {
-                          setAudioMuted(true);
-                          musicPlayerRef.current.mute();
-                        } else if (audioMuted) {
-                          setAudioMuted(false);
-                          musicPlayerRef.current.unMute();
-                        }
-                      }
-                    }}
-                    className="flex-1 accent-white/80"
-                    disabled={!audioUrl}
-                  />
-                  <span className="text-[11px] text-white/70 w-10 text-right">{audioVolume}%</span>
               </div>
-          </div>
-        </div>
-                        {/* Gemini API Key */}
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
-              <div className="text-[11px] text-white/60 uppercase tracking-[0.16em]">Gemini API Key</div>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setApiKey(val);
-                    localStorage.setItem('geminiApiKey', val);
-                  }}
-                  placeholder="ใส่ API Key เพื่อใช้ Break Inspiration"
-                  className="flex-1 bg-black/30 border border-white/10 text-white text-sm rounded-lg px-3 py-2 outline-none focus:border-white/40"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setApiKey('');
-                    localStorage.removeItem('geminiApiKey');
-                    setFormMessage('ลบ API Key แล้ว');
-                  }}
-                  className="px-4 py-2 bg-red-600/80 hover:bg-red-600 text-white text-xs font-semibold rounded-lg transition-colors"
-                >
-                  ลบ
-                </button>
-              </div>
-              <div className="text-[11px] text-white/50">Key ถูกเก็บใน localStorage บนเบราว์เซอร์คุณ</div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
         {/* --- Quote Generator (Gemini Feature) --- */}
         {(mode === 'shortBreak' || mode === 'longBreak') && (
