@@ -178,6 +178,12 @@ const App = () => {
     return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
   };
 
+  const forceHighQuality = (player) => {
+    if (player?.setPlaybackQuality) {
+      player.setPlaybackQuality('highres');
+    }
+  };
+
   // --- Helpers ---
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
@@ -608,6 +614,7 @@ const App = () => {
             if (cancelled) return;
             if (isYoutubeMuted) event.target.mute?.();
             else event.target.unMute?.();
+            forceHighQuality(event.target);
             event.target.playVideo();
             setImageLoaded(true);
           },
@@ -620,6 +627,7 @@ const App = () => {
             if (event.data === YT.PlayerState.PLAYING) {
               if (isYoutubeMuted) event.target.mute?.();
               else event.target.unMute?.();
+              forceHighQuality(event.target);
             }
           },
         },
@@ -687,6 +695,7 @@ const App = () => {
               event.target.setVolume(Math.max(1, audioVolume || 0));
               event.target.playVideo?.();
             }
+            forceHighQuality(event.target);
           },
           onStateChange: (event) => {
             if (cancelled) return;
@@ -697,6 +706,7 @@ const App = () => {
             if (event.data === YT.PlayerState.PLAYING) {
               if (audioMuted) event.target.mute?.();
               else event.target.unMute?.();
+              forceHighQuality(event.target);
             }
           },
         },
