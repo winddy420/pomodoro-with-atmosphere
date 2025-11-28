@@ -102,6 +102,7 @@ const App = () => {
   const [audioUrl, setAudioUrl] = useState('');
   const [audioMuted, setAudioMuted] = useState(true);
   const [audioVolume, setAudioVolume] = useState(55);
+  const [audioReady, setAudioReady] = useState(false);
   const [bgSwitchKey, setBgSwitchKey] = useState(0);
   const [apiKey, setApiKey] = useState('');
   const [hasHydrated, setHasHydrated] = useState(false);
@@ -575,26 +576,18 @@ const App = () => {
       const YT = await loadYouTubeAPI();
       if (!YT || cancelled) return;
 
-      // Always rebuild player on change to avoid detached nodes when switching.
       if (bgPlayerRef.current) {
         bgPlayerRef.current.destroy();
         bgPlayerRef.current = null;
       }
 
-      const applyVolumeState = (player) => {
-        player.setVolume(bgVolume);
-        if (isYoutubeMuted) player.mute();
-        else player.unMute();
-      };
-
-      const playerVars = {
+    const playerVars = {
         autoplay: 1,
         controls: 0,
         rel: 0,
         loop: 1,
         playsinline: 1,
         modestbranding: 1,
-        mute: isYoutubeMuted ? 1 : 0,
       };
       if (playlistId) {
         playerVars.listType = 'playlist';
@@ -611,7 +604,6 @@ const App = () => {
         events: {
           onReady: (event) => {
             if (cancelled) return;
-            applyVolumeState(event.target);
             event.target.playVideo();
             setImageLoaded(true);
           },
@@ -623,37 +615,34 @@ const App = () => {
     return () => {
       cancelled = true;
     };
-  }, [currentBgData, isYoutubeMuted, bgVolume, parseYouTubeLink, bgSwitchKey]);
+  }, [currentBgData, parseYouTubeLink, bgSwitchKey]);
 
+  // Apply mute/volume to background video without reloading
   useEffect(() => {
-    if (!audioUrl) {
-      musicPlayerRef.current?.destroy?.();
-      musicPlayerRef.current = null;
-      return;
+    const player = bgPlayerRef.current;
+    if (!player || typeof player.setVolume !== 'function') return;
+    player.setVolume(bgVolume);
+    if (isYoutubeMuted) {
+      player.mute?.();
+    } else {
+      player.unMute?.();
     }
+  }, [isYoutubeMuted, bgVolume]);
+
+  // Build music player when URL changes
+  useEffect(() => {
+    musicPlayerRef.current?.destroy?.();
+    musicPlayerRef.current = null;
+    setAudioReady(false);
+    if (!audioUrl) return;
 
     let cancelled = false;
-    const { videoId, playlistId } = parseYouTubeLink(audioSource || audioUrl);
-    if (!videoId && !playlistId) return;
+    const { videoId } = parseYouTubeLink(audioSource || audioUrl);
+    if (!videoId) return;
 
     const setup = async () => {
       const YT = await loadYouTubeAPI();
       if (!YT || cancelled) return;
-
-      const applyVolumeState = (player) => {
-        player.setVolume(audioVolume);
-        if (audioMuted) player.mute();
-        else player.unMute();
-      };
-
-      if (musicPlayerRef.current) {
-        const player = musicPlayerRef.current;
-        if (playlistId) player.loadPlaylist({ listType: 'playlist', list: playlistId, index: 0 });
-        else if (videoId) player.loadVideoById(videoId);
-        applyVolumeState(player);
-        player.playVideo();
-        return;
-      }
 
       const playerVars = {
         autoplay: 1,
@@ -662,25 +651,23 @@ const App = () => {
         loop: 1,
         playsinline: 1,
         modestbranding: 1,
-        mute: audioMuted ? 1 : 0,
+        origin: window.location.origin,
       };
-      if (playlistId) {
-        playerVars.listType = 'playlist';
-        playerVars.list = playlistId;
-      } else if (videoId) {
-        playerVars.playlist = videoId;
-      }
 
       musicPlayerRef.current = new YT.Player('music-player', {
-        height: '0',
-        width: '0',
-        videoId: playlistId ? undefined : videoId,
+        height: '1',
+        width: '1',
+        videoId,
         playerVars,
         events: {
           onReady: (event) => {
             if (cancelled) return;
-            applyVolumeState(event.target);
-            event.target.playVideo();
+            setAudioReady(true);
+            if (!audioMuted) {
+              event.target.unMute?.();
+              event.target.setVolume(Math.max(1, audioVolume || 0));
+              event.target.playVideo?.();
+            }
           },
         },
       });
@@ -689,8 +676,24 @@ const App = () => {
     setup();
     return () => {
       cancelled = true;
+      musicPlayerRef.current?.destroy?.();
+      musicPlayerRef.current = null;
+      setAudioReady(false);
     };
-  }, [audioUrl, audioSource, audioMuted, audioVolume, parseYouTubeLink]);
+  }, [audioUrl, audioSource, parseYouTubeLink, audioMuted, audioVolume]);
+
+  // Apply mute/volume to ready player
+  useEffect(() => {
+    if (!audioReady || !musicPlayerRef.current?.setVolume) return;
+    const player = musicPlayerRef.current;
+    const vol = Math.max(1, audioVolume || 0);
+    player.setVolume(vol);
+    if (audioMuted) {
+      player.mute && player.mute();
+    } else {
+      player.unMute && player.unMute();
+    }
+  }, [audioMuted, audioVolume, audioReady]);
 
   useEffect(() => {
     return () => {
@@ -1136,22 +1139,23 @@ const App = () => {
                     />
                     <button
                       type="button"
-                      onClick={() => {
-                        setFormMessage(null);
-                        if (!audioInput.trim()) {
-                          setFormMessage('กรุณาใส่ลิงก์เสียง YouTube');
-                          return;
-                        }
-                        const embed = buildYouTubeEmbed(audioInput);
-                        if (!embed) {
-                          setFormMessage('ลิงก์ YouTube ไม่ถูกต้อง');
-                          return;
-                        }
-                        setAudioUrl(embed);
-                        setAudioSource(audioInput.trim());
-                        setAudioMuted(true);
-                        setFormMessage('ตั้งค่าเสียงพื้นหลังแล้ว (เริ่มแบบปิดเสียง)');
-                      }}
+                  onClick={() => {
+                    setFormMessage(null);
+                    if (!audioInput.trim()) {
+                      setFormMessage('กรุณาใส่ลิงก์เสียง YouTube');
+                      return;
+                    }
+                    const embed = buildYouTubeEmbed(audioInput);
+                    if (!embed) {
+                      setFormMessage('ลิงก์ YouTube ไม่ถูกต้อง');
+                      return;
+                    }
+                    setAudioUrl(embed);
+                    setAudioSource(audioInput.trim());
+                    setAudioMuted(false);
+                    if (audioVolume === 0) setAudioVolume(40);
+                    setFormMessage('ตั้งค่าเสียงพื้นหลังแล้ว');
+                  }}
                       className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg transition-colors"
                     >
                       ตั้งค่า
@@ -1160,25 +1164,28 @@ const App = () => {
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
                       <button
-                        type="button"
-                        onClick={() => {
-                          if (!audioUrl) return;
-                          const next = !audioMuted;
-                          setAudioMuted(next);
-                          if (musicPlayerRef.current) {
-                            if (next) musicPlayerRef.current.mute();
-                            else {
-                              if (audioVolume === 0) {
-                                setAudioVolume(40);
-                                musicPlayerRef.current.setVolume(40);
-                              }
-                              musicPlayerRef.current.unMute();
-                            }
+                    type="button"
+                    onClick={() => {
+                      if (!audioUrl) return;
+                      const next = !audioMuted;
+                      setAudioMuted(next);
+                      const player = musicPlayerRef.current;
+                      if (player && typeof player.setVolume === 'function') {
+                        if (next) {
+                          player.mute && player.mute();
+                        } else {
+                          if (audioVolume === 0) {
+                            setAudioVolume(40);
+                            player.setVolume(40);
                           }
-                        }}
-                        className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/15 backdrop-blur transition-colors disabled:opacity-40"
-                        disabled={!audioUrl}
-                      >
+                          player.unMute && player.unMute();
+                          player.playVideo && player.playVideo();
+                        }
+                      }
+                    }}
+                    className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white text-xs font-semibold rounded-lg border border-white/15 backdrop-blur transition-colors disabled:opacity-40"
+                    disabled={!audioUrl}
+                  >
                         {audioMuted ? '🔇 เปิดเสียงเพลง' : '🔊 ปิดเสียงเพลง'}
                       </button>
                       <button
@@ -1203,23 +1210,24 @@ const App = () => {
                         min="0"
                         max="100"
                         value={audioVolume}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setAudioVolume(val);
-                          if (musicPlayerRef.current) {
-                            musicPlayerRef.current.setVolume(val);
-                            if (val === 0) {
-                              setAudioMuted(true);
-                              musicPlayerRef.current.mute();
-                            } else if (audioMuted) {
-                              setAudioMuted(false);
-                              musicPlayerRef.current.unMute();
-                            }
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setAudioVolume(val);
+                        if (musicPlayerRef.current) {
+                          musicPlayerRef.current.setVolume(val);
+                          if (val === 0) {
+                            setAudioMuted(true);
+                            musicPlayerRef.current.mute && musicPlayerRef.current.mute();
+                          } else if (audioMuted) {
+                            setAudioMuted(false);
+                            musicPlayerRef.current.unMute && musicPlayerRef.current.unMute();
+                            musicPlayerRef.current.playVideo && musicPlayerRef.current.playVideo();
                           }
-                        }}
-                        className="flex-1 accent-white/80"
-                        disabled={!audioUrl}
-                      />
+                        }
+                      }}
+                      className="flex-1 accent-white/80"
+                      disabled={!audioUrl}
+                  />
                       <span className="text-[11px] text-white/70 w-10 text-right">{audioVolume}%</span>
                     </div>
                   </div>
@@ -1350,7 +1358,7 @@ const App = () => {
       </div>
 
       {/* Hidden YouTube music player target */}
-      <div id="music-player" className="hidden" aria-hidden="true"></div>
+      <div id="music-player" className="w-1 h-1 absolute opacity-0 pointer-events-none" aria-hidden="true"></div>
     </div>
   );
 };
