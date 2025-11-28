@@ -581,13 +581,15 @@ const App = () => {
         bgPlayerRef.current = null;
       }
 
-    const playerVars = {
+      const playerVars = {
         autoplay: 1,
         controls: 0,
         rel: 0,
         loop: 1,
         playsinline: 1,
         modestbranding: 1,
+        enablejsapi: 1,
+        mute: isYoutubeMuted ? 1 : 0,
       };
       if (playlistId) {
         playerVars.listType = 'playlist';
@@ -604,8 +606,21 @@ const App = () => {
         events: {
           onReady: (event) => {
             if (cancelled) return;
+            if (isYoutubeMuted) event.target.mute?.();
+            else event.target.unMute?.();
             event.target.playVideo();
             setImageLoaded(true);
+          },
+          onStateChange: (event) => {
+            if (cancelled) return;
+            if (event.data === YT.PlayerState.ENDED) {
+              event.target.seekTo(0);
+              event.target.playVideo();
+            }
+            if (event.data === YT.PlayerState.PLAYING) {
+              if (isYoutubeMuted) event.target.mute?.();
+              else event.target.unMute?.();
+            }
           },
         },
       });
@@ -615,6 +630,8 @@ const App = () => {
     return () => {
       cancelled = true;
     };
+    // do not rebuild player on mute/volume toggles
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBgData, parseYouTubeLink, bgSwitchKey]);
 
   // Apply mute/volume to background video without reloading
@@ -652,7 +669,9 @@ const App = () => {
         playsinline: 1,
         modestbranding: 1,
         origin: window.location.origin,
+        enablejsapi: 1,
       };
+      playerVars.playlist = videoId;
 
       musicPlayerRef.current = new YT.Player('music-player', {
         height: '1',
@@ -669,6 +688,17 @@ const App = () => {
               event.target.playVideo?.();
             }
           },
+          onStateChange: (event) => {
+            if (cancelled) return;
+            if (event.data === YT.PlayerState.ENDED) {
+              event.target.seekTo?.(0);
+              event.target.playVideo?.();
+            }
+            if (event.data === YT.PlayerState.PLAYING) {
+              if (audioMuted) event.target.mute?.();
+              else event.target.unMute?.();
+            }
+          },
         },
       });
     };
@@ -680,7 +710,8 @@ const App = () => {
       musicPlayerRef.current = null;
       setAudioReady(false);
     };
-  }, [audioUrl, audioSource, parseYouTubeLink, audioMuted, audioVolume]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUrl, audioSource, parseYouTubeLink]);
 
   // Apply mute/volume to ready player
   useEffect(() => {
@@ -692,6 +723,7 @@ const App = () => {
       player.mute && player.mute();
     } else {
       player.unMute && player.unMute();
+      player.playVideo && player.playVideo();
     }
   }, [audioMuted, audioVolume, audioReady]);
 
