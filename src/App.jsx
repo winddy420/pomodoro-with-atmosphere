@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Brain, Armchair, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Armchair, Loader2, Eye, EyeOff, VolumeX, Volume2 } from 'lucide-react';
 
 // --- Configuration ---
 const MODES = {
@@ -118,6 +118,8 @@ const App = () => {
   const blobUrlsRef = useRef([]);
   const bgPlayerRef = useRef(null);
   const musicPlayerRef = useRef(null);
+  const bgQualityIntervalRef = useRef(null);
+  const musicQualityIntervalRef = useRef(null);
 
   const registerBlobUrl = (url) => {
     blobUrlsRef.current.push(url);
@@ -179,9 +181,16 @@ const App = () => {
   };
 
   const forceHighQuality = (player) => {
-    if (player?.setPlaybackQuality) {
-      player.setPlaybackQuality('highres');
+    if (!player?.setPlaybackQuality) return;
+    const prefs = ['highres', 'hd2160', 'hd1440', 'hd1080', 'hd720'];
+    for (const q of prefs) {
+      player.setPlaybackQuality(q);
     }
+  };
+  const startQualityInterval = (ref, player) => {
+    if (!player) return;
+    if (ref.current) clearInterval(ref.current);
+    ref.current = setInterval(() => forceHighQuality(player), 4000);
   };
 
   // --- Helpers ---
@@ -557,6 +566,29 @@ const App = () => {
     setFormMessage('ลบ Atmosphere แล้ว');
   };
 
+  const masterMuted = isYoutubeMuted && audioMuted;
+  const handleToggleMasterMute = () => {
+    const player = bgPlayerRef.current;
+    const musicPlayer = musicPlayerRef.current;
+    if (!masterMuted) {
+      setIsYoutubeMuted(true);
+      setAudioMuted(true);
+      player?.mute?.();
+      musicPlayer?.mute?.();
+    } else {
+      const safeBgVol = bgVolume === 0 ? 30 : bgVolume;
+      const safeAudioVol = audioVolume === 0 ? 40 : audioVolume;
+      setBgVolume(safeBgVol);
+      setAudioVolume(safeAudioVol);
+      setIsYoutubeMuted(false);
+      setAudioMuted(false);
+      player?.setVolume?.(safeBgVol);
+      player?.unMute?.();
+      musicPlayer?.setVolume?.(safeAudioVol);
+      musicPlayer?.unMute?.();
+    }
+  };
+
   const currentBgData = getCurrentBg();
   useEffect(() => {
     setImageLoaded(false);
@@ -595,6 +627,7 @@ const App = () => {
         playsinline: 1,
         modestbranding: 1,
         enablejsapi: 1,
+        vq: 'highres',
         mute: isYoutubeMuted ? 1 : 0,
       };
       if (playlistId) {
@@ -615,8 +648,13 @@ const App = () => {
             if (isYoutubeMuted) event.target.mute?.();
             else event.target.unMute?.();
             forceHighQuality(event.target);
+            startQualityInterval(bgQualityIntervalRef, event.target);
             event.target.playVideo();
             setImageLoaded(true);
+          },
+          onPlaybackQualityChange: (event) => {
+            if (cancelled) return;
+            forceHighQuality(event.target);
           },
           onStateChange: (event) => {
             if (cancelled) return;
@@ -628,6 +666,10 @@ const App = () => {
               if (isYoutubeMuted) event.target.mute?.();
               else event.target.unMute?.();
               forceHighQuality(event.target);
+              startQualityInterval(bgQualityIntervalRef, event.target);
+            }
+            if (event.data === YT.PlayerState.CUED) {
+              forceHighQuality(event.target);
             }
           },
         },
@@ -637,6 +679,9 @@ const App = () => {
     setup();
     return () => {
       cancelled = true;
+      const intervalId = bgQualityIntervalRef.current;
+      if (intervalId) clearInterval(intervalId);
+      bgQualityIntervalRef.current = null;
     };
     // do not rebuild player on mute/volume toggles
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -678,6 +723,7 @@ const App = () => {
         modestbranding: 1,
         origin: window.location.origin,
         enablejsapi: 1,
+        vq: 'highres',
       };
       playerVars.playlist = videoId;
 
@@ -696,6 +742,11 @@ const App = () => {
               event.target.playVideo?.();
             }
             forceHighQuality(event.target);
+            startQualityInterval(musicQualityIntervalRef, event.target);
+          },
+          onPlaybackQualityChange: (event) => {
+            if (cancelled) return;
+            forceHighQuality(event.target);
           },
           onStateChange: (event) => {
             if (cancelled) return;
@@ -706,6 +757,9 @@ const App = () => {
             if (event.data === YT.PlayerState.PLAYING) {
               if (audioMuted) event.target.mute?.();
               else event.target.unMute?.();
+              forceHighQuality(event.target);
+            }
+            if (event.data === YT.PlayerState.CUED) {
               forceHighQuality(event.target);
             }
           },
@@ -719,6 +773,9 @@ const App = () => {
       musicPlayerRef.current?.destroy?.();
       musicPlayerRef.current = null;
       setAudioReady(false);
+      const intervalId = musicQualityIntervalRef.current;
+      if (intervalId) clearInterval(intervalId);
+      musicQualityIntervalRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioUrl, audioSource, parseYouTubeLink]);
@@ -733,7 +790,6 @@ const App = () => {
       player.mute && player.mute();
     } else {
       player.unMute && player.unMute();
-      player.playVideo && player.playVideo();
     }
   }, [audioMuted, audioVolume, audioReady]);
 
@@ -796,16 +852,27 @@ const App = () => {
           Minimal Focus
         </div>
       </div>
-      {!showAtmosphereUI && (
+      <div className="fixed top-6 right-4 z-30 flex items-center gap-2">
         <button
           type="button"
-          onClick={() => setShowAtmosphereUI(true)}
-          className="fixed top-6 right-4 z-30 text-white/80 bg-black/60 border border-white/15 p-2 rounded-full backdrop-blur hover:bg-black/70 transition-colors"
-          aria-label="Show Atmosphere/Settings"
+          onClick={handleToggleMasterMute}
+          className="text-white/90 bg-black/70 border border-white/15 p-2 rounded-full backdrop-blur hover:bg-black/80 transition-colors shadow-lg"
+          aria-label={masterMuted ? 'Unmute all' : 'Mute all'}
+          title={masterMuted ? 'Unmute all audio' : 'Mute all audio'}
         >
-          <Eye size={16} />
+          {masterMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
-      )}
+        {!showAtmosphereUI && (
+          <button
+            type="button"
+            onClick={() => setShowAtmosphereUI(true)}
+            className="text-white/80 bg-black/60 border border-white/15 p-2 rounded-full backdrop-blur hover:bg-black/70 transition-colors"
+            aria-label="Show Atmosphere/Settings"
+          >
+            <Eye size={16} />
+          </button>
+        )}
+      </div>
 
       {/* --- Main Content --- */}
       <div className="relative z-10 flex flex-col items-center w-full max-w-md px-4">
@@ -1221,7 +1288,6 @@ const App = () => {
                             player.setVolume(40);
                           }
                           player.unMute && player.unMute();
-                          player.playVideo && player.playVideo();
                         }
                       }
                     }}
@@ -1263,7 +1329,6 @@ const App = () => {
                           } else if (audioMuted) {
                             setAudioMuted(false);
                             musicPlayerRef.current.unMute && musicPlayerRef.current.unMute();
-                            musicPlayerRef.current.playVideo && musicPlayerRef.current.playVideo();
                           }
                         }
                       }}
