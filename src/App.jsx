@@ -102,6 +102,7 @@ const App = () => {
   const [audioUrl, setAudioUrl] = useState('');
   const [audioMuted, setAudioMuted] = useState(true);
   const [audioVolume, setAudioVolume] = useState(55);
+  const [masterSilenced, setMasterSilenced] = useState(false);
   const [audioReady, setAudioReady] = useState(false);
   const [bgSwitchKey, setBgSwitchKey] = useState(0);
   const [apiKey, setApiKey] = useState('');
@@ -120,6 +121,12 @@ const App = () => {
   const musicPlayerRef = useRef(null);
   const bgQualityIntervalRef = useRef(null);
   const musicQualityIntervalRef = useRef(null);
+  const lastAudioStateRef = useRef({
+    bgMuted: true,
+    audioMuted: true,
+    bgVolume,
+    audioVolume,
+  });
 
   const registerBlobUrl = (url) => {
     blobUrlsRef.current.push(url);
@@ -566,26 +573,45 @@ const App = () => {
     setFormMessage('ลบ Atmosphere แล้ว');
   };
 
-  const masterMuted = isYoutubeMuted && audioMuted;
   const handleToggleMasterMute = () => {
     const player = bgPlayerRef.current;
     const musicPlayer = musicPlayerRef.current;
-    if (!masterMuted) {
+    if (!masterSilenced) {
+      lastAudioStateRef.current = {
+        bgMuted: isYoutubeMuted,
+        audioMuted,
+        bgVolume,
+        audioVolume,
+      };
+      setMasterSilenced(true);
       setIsYoutubeMuted(true);
       setAudioMuted(true);
       player?.mute?.();
       musicPlayer?.mute?.();
     } else {
-      const safeBgVol = bgVolume === 0 ? 30 : bgVolume;
-      const safeAudioVol = audioVolume === 0 ? 40 : audioVolume;
-      setBgVolume(safeBgVol);
-      setAudioVolume(safeAudioVol);
-      setIsYoutubeMuted(false);
-      setAudioMuted(false);
-      player?.setVolume?.(safeBgVol);
-      player?.unMute?.();
-      musicPlayer?.setVolume?.(safeAudioVol);
-      musicPlayer?.unMute?.();
+      setMasterSilenced(false);
+      const {
+        bgMuted: prevBgMuted = isYoutubeMuted,
+        audioMuted: prevAudioMuted = audioMuted,
+        bgVolume: prevBgVolume = bgVolume,
+        audioVolume: prevAudioVolume = audioVolume,
+      } = lastAudioStateRef.current || {};
+
+      setBgVolume(prevBgVolume);
+      setAudioVolume(prevAudioVolume);
+      setIsYoutubeMuted(prevBgMuted);
+      setAudioMuted(prevAudioMuted);
+
+      if (player) {
+        player.setVolume?.(prevBgVolume);
+        if (prevBgMuted) player.mute?.();
+        else player.unMute?.();
+      }
+      if (musicPlayer) {
+        musicPlayer.setVolume?.(prevAudioVolume);
+        if (prevAudioMuted) musicPlayer.mute?.();
+        else musicPlayer.unMute?.();
+      }
     }
   };
 
@@ -857,10 +883,10 @@ const App = () => {
           type="button"
           onClick={handleToggleMasterMute}
           className="text-white/90 bg-black/70 border border-white/15 p-2 rounded-full backdrop-blur hover:bg-black/80 transition-colors shadow-lg"
-          aria-label={masterMuted ? 'Unmute all' : 'Mute all'}
-          title={masterMuted ? 'Unmute all audio' : 'Mute all audio'}
+          aria-label={masterSilenced ? 'Unmute all' : 'Mute all'}
+          title={masterSilenced ? 'Unmute all audio' : 'Mute all audio'}
         >
-          {masterMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+          {masterSilenced ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
         {!showAtmosphereUI && (
           <button
