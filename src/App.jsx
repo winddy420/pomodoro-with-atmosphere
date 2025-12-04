@@ -610,7 +610,12 @@ const App = () => {
       if (musicPlayer) {
         musicPlayer.setVolume?.(prevAudioVolume);
         if (prevAudioMuted) musicPlayer.mute?.();
-        else musicPlayer.unMute?.();
+        else {
+          musicPlayer.unMute?.();
+          if (musicPlayer.getPlayerState && musicPlayer.getPlayerState() !== 1) {
+            musicPlayer.playVideo?.();
+          }
+        }
       }
     }
   };
