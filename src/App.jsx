@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, Coffee, Brain, Armchair, Loader2, Eye, EyeOff, VolumeX, Volume2 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Coffee, Brain, Armchair, Loader2, Settings, VolumeX, Volume2 } from 'lucide-react';
 
 // --- Configuration ---
 const MODES = {
@@ -893,16 +893,17 @@ const App = () => {
         >
           {masterSilenced ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
-        {!showAtmosphereUI && (
-          <button
-            type="button"
-            onClick={() => setShowAtmosphereUI(true)}
-            className="text-white/80 bg-black/60 border border-white/15 p-2 rounded-full backdrop-blur hover:bg-black/70 transition-colors"
-            aria-label="Show Atmosphere/Settings"
-          >
-            <Eye size={16} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setShowAtmosphereUI((v) => !v)}
+          className={`text-white/90 border border-white/15 p-2 rounded-full backdrop-blur transition-colors shadow-lg ${
+            showAtmosphereUI ? 'bg-emerald-600/80 hover:bg-emerald-600' : 'bg-black/60 hover:bg-black/70'
+          }`}
+          aria-label={showAtmosphereUI ? 'Hide Atmosphere/Settings' : 'Show Atmosphere/Settings'}
+          title={showAtmosphereUI ? 'Hide Atmosphere & settings' : 'Show Atmosphere & settings'}
+        >
+          <Settings size={16} />
+        </button>
       </div>
 
       {/* --- Main Content --- */}
@@ -958,14 +959,6 @@ const App = () => {
             <div className="w-full mb-8">
               <div className="flex items-center justify-center gap-2 mb-2">
                 <span className="text-[10px] text-white/40 uppercase tracking-wider">Select Atmosphere</span>
-                <button
-                  type="button"
-                  onClick={() => setShowAtmosphereUI((v) => !v)}
-                  className="text-white/70 hover:text-white p-1 rounded-full bg-black/40 border border-white/10 backdrop-blur transition-colors"
-                  aria-label={showAtmosphereUI ? 'Hide Atmosphere/Settings' : 'Show Atmosphere/Settings'}
-                >
-                  {showAtmosphereUI ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
               </div>
               <div className="flex justify-center gap-3 overflow-x-auto py-2 px-4 no-scrollbar">
                 {backgrounds[MODES[mode].bgCategory].map((bg) => (

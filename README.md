@@ -7,6 +7,7 @@ Animated pomodoro timer with GIF or YouTube atmospheres (with mute/unmute + volu
 - Atmosphere selector for each category (focus, break) with thumbnails and YouTube badges.
 - Manage Atmosphere panel: add (upload GIF/image or paste YouTube video/playlist/live), rename, replace image/link, delete (keeps at least one per category), collapse/expand.
 - YouTube atmospheres can be toggled mute/unmute and adjusted with a volume slider from the Manage panel; separate YouTube background music input with its own volume/mute/clear controls.
+- One-click master mute/unmute plus a persistent top-right settings toggle for quick access.
 - Optional Gemini quote generator during breaks (needs API key).
 - Settings (times, atmospheres, YouTube sound, music, Gemini API key) persist in browser localStorage for next visits.
 
