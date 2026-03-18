@@ -703,13 +703,22 @@ const App = () => {
               forceHighQuality(event.target);
             }
           },
+          onError: (event) => {
+            if (cancelled) return;
+            console.warn('YouTube background player error:', event.data);
+            setImageLoaded(true);
+          },
         },
       });
     };
 
     setup();
+    const timeoutId = setTimeout(() => {
+      if (!cancelled) setImageLoaded(true);
+    }, 15000);
     return () => {
       cancelled = true;
+      clearTimeout(timeoutId);
       const intervalId = bgQualityIntervalRef.current;
       if (intervalId) clearInterval(intervalId);
       bgQualityIntervalRef.current = null;
@@ -793,6 +802,11 @@ const App = () => {
             if (event.data === YT.PlayerState.CUED) {
               forceHighQuality(event.target);
             }
+          },
+          onError: (event) => {
+            if (cancelled) return;
+            console.warn('YouTube music player error:', event.data);
+            setAudioReady(true);
           },
         },
       });
