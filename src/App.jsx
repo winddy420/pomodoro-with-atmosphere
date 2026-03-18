@@ -105,6 +105,7 @@ const App = () => {
   const [masterSilenced, setMasterSilenced] = useState(false);
   const [audioReady, setAudioReady] = useState(false);
   const [bgSwitchKey, setBgSwitchKey] = useState(0);
+  const [overlayOpacity, setOverlayOpacity] = useState(60);
   const [apiKey, setApiKey] = useState('');
   const [hasHydrated, setHasHydrated] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -267,6 +268,7 @@ const App = () => {
       if (typeof parsed.bgVolume === 'number') setBgVolume(parsed.bgVolume);
       if (typeof parsed.audioVolume === 'number') setAudioVolume(parsed.audioVolume);
       if (typeof parsed.audioMuted === 'boolean') setAudioMuted(parsed.audioMuted);
+      if (typeof parsed.overlayOpacity === 'number') setOverlayOpacity(parsed.overlayOpacity);
       if (typeof parsed.audioSource === 'string' && parsed.audioSource.trim()) {
         const embed = buildYouTubeEmbed(parsed.audioSource);
         if (embed) {
@@ -298,6 +300,7 @@ const App = () => {
       audioUrl,
       audioMuted,
       audioVolume,
+      overlayOpacity,
     };
     localStorage.setItem(PERSIST_KEY, JSON.stringify(payload));
   }, [
@@ -313,6 +316,7 @@ const App = () => {
     audioUrl,
     audioMuted,
     audioVolume,
+    overlayOpacity,
     hasHydrated,
   ]);
 
@@ -899,7 +903,7 @@ const App = () => {
             />
           )}
           {/* Overlay: Darker to make text pop over busy backgrounds */}
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-[1px]"></div>
+          <div className="absolute inset-0 backdrop-blur-[1px]" style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity / 100})` }}></div>
         </div>
       </div>
 
@@ -1231,6 +1235,21 @@ const App = () => {
                       </div>
                     )}
                   </form>
+
+                  <div className="mt-2 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-white/60">
+                      <span>ความมืดพื้นหลัง</span>
+                      <span>{overlayOpacity}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={overlayOpacity}
+                      onChange={(e) => setOverlayOpacity(Number(e.target.value))}
+                      className="w-full accent-white/60"
+                    />
+                  </div>
 
                   {currentBgData.type === 'youtube' && (
                     <div className="mt-2 space-y-2">
